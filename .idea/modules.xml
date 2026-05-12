@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Velochat.main.iml" filepath="$PROJECT_DIR$/.idea/modules/Velochat.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Velochat.test.iml" filepath="$PROJECT_DIR$/.idea/modules/Velochat.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Velochat.iml" filepath="$PROJECT_DIR$/.idea/modules/Velochat.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/de.lundlucenany9.Velochat.main.iml" filepath="$PROJECT_DIR$/.idea/modules/de.lundlucenany9.Velochat.main.iml" />
     </modules>
   </component>
 </project>
