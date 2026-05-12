@@ -1,0 +1,104 @@
+# Blocking Chat messages requires the plugin UnsignedVelocity to be installed
+#
+# -------------------------
+# Chat behavior
+# -------------------------
+# Send chat to all servers (true) or only the current server (false).
+global-chat = true
+# Use MiniMessage for formatting.
+use_minimessage = true
+# Main chat format. Tags: <server>, <username>, <ping>, <message>, <reply_id>, <reply_snippet>.
+format = "<dark_gray>[<yellow><server></yellow>]</dark_gray> <hover:show_text:'Klicken um privat zu schreiben'><click:suggest_command:'/reply <reply_id> '><gray><username></gray></click></hover><dark_gray>: <gray><message></gray>"
+# Format used when sender/receiver are blocked. Should be a lightweight/gray version of format.
+blocked_format = "<gray><username>: <message></gray>"
+
+# -------------------------
+# PlaceholderAPI (preferred: PAPISocketBridge; fallback: PAPIProxyBridge)
+# -------------------------
+use_papi_socket_bridge = true
+use_papi_proxy_bridge = false
+
+# -------------------------
+# Reply formatting
+# -------------------------
+# Header shown above the reply message. Tags: <username>, <reply_snippet>, <reply_full>, <reply_id>.
+replyFormat = "<dark_gray>┌─(<gray><italic><username></italic></gray> <dark_gray>-</dark_gray> <hover:show_text:'<reply_full>'><gray><reply_snippet></gray></hover>)</dark_gray>"
+# Prefix inserted between header and body.
+replayMessagePrefix = "<dark_gray>└<dark_gray>"
+# Format used for reply messages from blocked players.
+blocked_reply_format = "<gray><username>: <message></gray>"
+
+# -------------------------
+# Private message formatting (MiniMessage)
+# Tags: <sender>, <receiver>, <message>, <sender_server>, <receiver_server>, <sender_ping>, <receiver_ping>
+# -------------------------
+msgFormatSender = "<dark_gray>[<gray>you</gray> -> <yellow><receiver></yellow>]</dark_gray> <gray><message></gray>"
+msgFormatReceiver = "<dark_gray>[<yellow><sender></yellow> -> <gray>you</gray>]</dark_gray> <gray><message></gray>"
+
+# -------------------------
+# Server lists
+# -------------------------
+# If blacklist = true, servers in "servers" are excluded.
+# If blacklist = false, only servers in "servers" are included.
+blacklist = true
+servers = []
+
+# Optional chat groups for global chat. Example:
+# chat_groups = { group1 = ["lobby","survival"], group2 = ["skyblock","prison"] }
+chat_groups = {}
+
+# -------------------------
+# Forwarding
+# -------------------------
+# -1 = deny original chat, 0 = allow, 1 = disable chat handling
+forward_mode = 0
+# Send chat to server players when not global.
+broadcast_message = true
+
+# -------------------------
+# Broadcast command
+# -------------------------
+# Prefix for /broadcast. Supports MiniMessage and <sender> / <message>.
+broadcastPrefix = "<red>[Broadcast]</red> <gray><sender>:</gray> "
+
+# -------------------------
+# Anti-spam
+# -------------------------
+anti_spam_enabled = true
+# Minimum time between similar messages.
+anti_spam_interval_millis = 1500
+# Should the player be muted
+anti_spam_should_mute = true
+# Mute length in seconds when spam is detected.
+anti_spam_mute_seconds = 30
+# Similarity threshold (0-1). Higher = stricter.
+anti_spam_similarity_threshold = 0.85
+
+# -------------------------
+# Word filter
+# -------------------------
+filter_enabled = true
+# "block" = block message, "censor" = replace with filter_char.
+filter_mode = "censor"
+filter_words = []
+filter_char = "*"
+# Try to detect leetspeak variants (e.g., h0rse).
+filter_leetspeak = true
+
+# -------------------------
+# Font filter
+# -------------------------
+# Block alternate Unicode fonts (e.g., fullwidth or mathematical alphabets).
+ban_alternate_fonts = false
+# Permission that bypasses the font filter.
+ban_alternate_fonts_permission = "velochat.fonts.bypass"
+
+# -------------------------
+# Backend Messaging
+# -------------------------
+use_plugin_message = true
+# Server to send the message to.
+plugin_message_server = ""
+use_tcp_socket = false
+tcp_socket_port = 1234
+use_netty = false
