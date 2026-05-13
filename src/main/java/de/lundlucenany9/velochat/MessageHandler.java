@@ -25,7 +25,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.List;
@@ -39,11 +41,19 @@ public class MessageHandler {
     private static final String LOOPBACK = "127.0.0.1";
     private final List<MessageEventListener> listeners = new CopyOnWriteArrayList<>();
     private final EventLoopGroup nettyClientGroup = new NioEventLoopGroup(1);
-    private final ExecutorService ioExecutor = Executors.newFixedThreadPool(8,r -> {
-        Thread t = new Thread(r, "velochat-io");
-        t.setDaemon(true);
-        return t;
-    });
+    private final ExecutorService ioExecutor = new ThreadPoolExecutor(
+            2, 16,
+            60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(256),
+            r -> {
+                Thread t = new Thread(r, "velochat-io");
+                t.setDaemon(true);
+                return t;
+            },
+            (task, executor) -> Velochat.getLogger().warn(
+                    "velochat-io queue full, dropping IO task"
+            )
+    );
     private final EventLoopGroup nettyBossGroup = new NioEventLoopGroup(1);
     private final EventLoopGroup nettyWorkerGroup = new NioEventLoopGroup();
 
@@ -184,10 +194,12 @@ public class MessageHandler {
         byte[] copy = data.clone();
         ioExecutor.execute(()-> {
             try (
-                    Socket socket = new Socket(LOOPBACK, Velochat.getConfig().getTcpSocketPort());
-                    DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                    DataInputStream in = new DataInputStream(socket.getInputStream())
+                    Socket socket = new Socket()
             ) {
+                socket.connect(new java.net.InetSocketAddress(LOOPBACK, Velochat.getConfig().getTcpSocketPort()), 3000);
+                socket.setSoTimeout(3000);
+                DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+                DataInputStream in = new DataInputStream(socket.getInputStream());
                 out.writeUTF(new String(copy, StandardCharsets.UTF_8));
                 String response = in.readUTF();
                 System.out.println("TCP response: " + response);
