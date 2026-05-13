@@ -181,11 +181,19 @@ public class FormatParser {
 
     public void sendChat(String msg, Player player) {
         List<Player> recipients = GroupUtil.getRecipients(player);
+        String group = GroupUtil.getGroup(player);
+        boolean hasDiscordTarget = group != null
+                && !group.isBlank()
+                && config.isDiscordEnabled()
+                && config.getDiscordGroupMappings().containsKey(group);
+        if (recipients.isEmpty() && !hasDiscordTarget) {
+            return;
+        }
         Set<UUID> recipientIds = new java.util.HashSet<>();
         for (Player target : recipients) {
             recipientIds.add(target.getUniqueId());
         }
-        String replyId = ReplyRegistry.register(player.getUniqueId().toString(), player.getUsername(), msg, recipientIds, ReplyRegistry.Origin.MINECRAFT, GroupUtil.getGroup(player));
+        String replyId = ReplyRegistry.register(player.getUniqueId().toString(), player.getUsername(), msg, recipientIds, ReplyRegistry.Origin.MINECRAFT, group);
         ReplyRegistry.ReplyContext replyContext = ReplyRegistry.get(replyId);
         String snippet = replyContext == null ? "" : replyContext.snippet();
         TagResolver resolver = TagResolver.resolver(new ChatTagResolver(player, msg, replyId, snippet));
@@ -205,14 +213,19 @@ public class FormatParser {
                         })
                         : CompletableFuture.completedFuture(null);
         CompletableFuture<String> discordMessageIdFuture = Bot.getInstance()
-                .sendMessage(GroupUtil.getGroup(player), msg)
+                .sendMessage(group, msg)
                 .exceptionally(ex -> {
                     logger.warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
                     return null;
                 });
         normalFuture.thenCombine(blockedFuture, (component, blockedComponent) -> {
-            discordMessageIdFuture.thenAccept(discordMessageId ->
-                    ReplyRegistry.updateFullMessage(replyId, component, ReplyRegistry.Origin.MINECRAFT, discordMessageId));
+            discordMessageIdFuture
+                    .thenAccept(discordMessageId ->
+                            ReplyRegistry.updateFullMessage(replyId, component, ReplyRegistry.Origin.MINECRAFT, discordMessageId))
+                    .exceptionally(ex -> {
+                        logger.warn("Failed to update reply context with Discord message id: {}", ex.getMessage());
+                        return null;
+                    });
             proxy.getScheduler().buildTask(plugin, () -> {
                 if (config.isGlobal_chat()) {
                     sendToRecipients(player, recipients, component, blockedComponent);
@@ -220,6 +233,9 @@ public class FormatParser {
                     sendToRecipients(player, recipients, component, blockedComponent);
                 }
             }).schedule();
+            return null;
+        }).exceptionally(ex -> {
+            logger.warn("Failed to deliver chat message: {}", ex.getMessage());
             return null;
         });
     }
