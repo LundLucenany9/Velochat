@@ -35,8 +35,10 @@ public final class ReplyCommand {
 
                                     ReplyRegistry.ReplyContext contextById = ReplyRegistry.get(targetName);
                                     if (contextById != null) {
-                                        if (contextById.recipients() != null
-                                                && !contextById.recipients().contains(source.getUniqueId())) {
+                                        boolean isSender = contextById.senderId().equals(source.getUniqueId().toString());
+                                        boolean isRecipient = contextById.recipients() != null
+                                                && contextById.recipients().contains(source.getUniqueId());
+                                        if (!isSender && !isRecipient) {
                                             String template = MessagesUtil.template(
                                                     Velochat.getMessages().reply_context_invalid,
                                                     "<red>You cannot reply to that message.</red>"
