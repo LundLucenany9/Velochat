@@ -3,6 +3,7 @@ plugins {
     id 'eclipse'
     id 'org.jetbrains.gradle.plugin.idea-ext' version '1.1.8'
     id("xyz.jpenilla.run-velocity") version "2.3.1"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 group = 'de.lundlucenany9'
@@ -21,8 +22,8 @@ dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     compileOnly(files("/home/lundl/IdeaProjects/PAPISocketBridge/build/libs/PAPISocketBridge-velocity-api.jar"))
-    implementation "io.netty:netty-all:4.1.128.Final"
-    implementation("net.dv8tion:JDA:6.4.1")
+    shadow "io.netty:netty-all:4.1.128.Final"
+    shadow("net.dv8tion:JDA:6.4.1")
 }
 
 tasks {
@@ -59,3 +60,19 @@ sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
 
 project.idea.project.settings.taskTriggers.afterSync generateTemplates
 project.eclipse.synchronizationTasks(generateTemplates)
+
+configurations {
+    compileClasspath.extendsFrom(shadow)
+    runtimeClasspath.extendsFrom(shadow)
+}
+
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier.set('')
+    dependencies {
+        // JDA bundles its own opus/native libs — exclude audio if not needed
+        exclude(dependency('club.minnced:opus-java'))
+    }
+}
+
+assemble.dependsOn shadowJar
