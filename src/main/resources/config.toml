@@ -102,3 +102,17 @@ plugin_message_server = ""
 use_tcp_socket = false
 tcp_socket_port = 1234
 use_netty = false
+
+# -------------------------
+# Discord Configuration
+# -------------------------
+# enable and disable requires restart
+discord_enable = true
+# changing token requires restart
+discord_token = "YOUR TOKEN HERE"
+discord_guild = "YOUR GUILD ID HERE"
+# the name shown in the server field
+discord_server_name = "Your Server"
+# add your group to channel mappings here
+# discord_group_mappings = {lobby = "1231323", survival = "556234}
+discord_group_mappings = {}

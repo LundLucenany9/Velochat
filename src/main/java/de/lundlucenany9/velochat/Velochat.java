@@ -21,6 +21,7 @@ import de.lundlucenany9.velochat.commands.MuteCommand;
 import de.lundlucenany9.velochat.commands.UnmuteCommand;
 import de.lundlucenany9.velochat.commands.BlockCommand;
 import de.lundlucenany9.velochat.commands.UnblockCommand;
+import de.lundlucenany9.velochat.discord.Bot;
 import de.lundlucenany9.velochat.listeners.ChatListener;
 import org.slf4j.Logger;
 
@@ -81,6 +82,7 @@ public final class Velochat {
             throw new RuntimeException(e);
         }
         server.getChannelRegistrar().register(MessageHandler.IDENTIFIER);
+        Bot.initializeBot();
 
         server.getEventManager().register(this, new ChatListener());
         CommandManager commandManager = server.getCommandManager();

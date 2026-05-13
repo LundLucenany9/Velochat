@@ -121,6 +121,21 @@ public class Config {
     public int getNetty_port() {
         return netty_port;
     }
+    public String getDiscordGuild() {
+        return discord_guild;
+    }
+    public String getDiscordToken() {
+        return discord_token;
+    }
+    public Map<String, String> getDiscordGroupMappings() {
+        return discord_group_mappings;
+    }
+    public String getDiscordServerName() {
+        return discord_server_name;
+    }
+    public boolean isDiscordEnabled() {
+        return discord_enable;
+    }
 
     List<String> servers;
     Map<String, List<String>> chat_groups;
@@ -157,5 +172,10 @@ public class Config {
     int tcp_socket_port;
     boolean use_netty;
     int netty_port;
+    String discord_token;
+    String discord_guild;
+    String discord_server_name;
+    Map<String, String > discord_group_mappings;
+    boolean discord_enable;
 
 }
