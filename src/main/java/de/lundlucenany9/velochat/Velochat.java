@@ -8,6 +8,7 @@ import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -93,7 +94,15 @@ public final class Velochat {
         registerCommand(commandManager, "unmute", UnmuteCommand.getCommand(server));
         registerCommand(commandManager, "block", BlockCommand.getCommand(server));
         registerCommand(commandManager, "unblock", UnblockCommand.getCommand(server));
+    }
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent e) {
+        try {
+            messageHandler.shutdownNetty();
+        } catch (InterruptedException ex) {
+            logger.error("MessagHandler shutdown interrupted: {}", ex.getLocalizedMessage(), ex.fillInStackTrace());
         }
+    }
 
     @Subscribe
     public void onPluginMessage(PluginMessageEvent event) {

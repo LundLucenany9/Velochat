@@ -102,3 +102,4 @@ plugin_message_server = ""
 use_tcp_socket = false
 tcp_socket_port = 1234
 use_netty = false
+netty_port = 25580

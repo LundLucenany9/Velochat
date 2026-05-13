@@ -37,7 +37,8 @@ public class ChatListener {
                     String template = MessagesUtil.template(messages.muted, "<red>You are muted for <duration>.Reason: <italic><reason></italic></red>");
                     Map<String, String> placeholders = new HashMap<>();
                     placeholders.put("duration", Velochat.getMuteManager().remainingFormated(e.getPlayer()));
-                    placeholders.put("reason", String.valueOf(Velochat.getMuteManager().reason(e.getPlayer())));
+                    String reason = Velochat.getMuteManager().reason(e.getPlayer());
+                    placeholders.put("reason", reason != null ? reason : "");
                     e.getPlayer().sendMessage(MessageUtil.render(e.getPlayer(), template, placeholders));
                     e.setResult(PlayerChatEvent.ChatResult.denied());
                     return null;
@@ -90,9 +91,7 @@ public class ChatListener {
                 }
                 FilterUtil.FilterResult filterResult = FilterUtil.applyFilter(message, config);
                 MessageHandler handler = Velochat.getMessageHandler();
-                if (handler != null) {
-                    handler.sendMessage("flag", "filtered", e.getPlayer().getUniqueId().toString(),e.getMessage());
-                }
+
 
                 if (filterResult.blocked()) {
                     Messages messages = Velochat.getMessages();
@@ -102,10 +101,16 @@ public class ChatListener {
                     );
                     e.getPlayer().sendMessage(MessageUtil.render(e.getPlayer(), template, null));
                     e.setResult(PlayerChatEvent.ChatResult.denied());
+                    if (handler != null) {
+                        handler.sendMessage("flag", "filtered", e.getPlayer().getUniqueId().toString(),e.getMessage());
+                    }
                     return null;
                 }
                 if (filterResult.modified()) {
                     message = filterResult.message();
+                    if (handler != null) {
+                        handler.sendMessage("flag", "filtered", e.getPlayer().getUniqueId().toString(),e.getMessage());
+                    }
                 }
 
                 e.setResult(config.getForward_mode() == -1 ? PlayerChatEvent.ChatResult.denied() : config.getForward_mode() == 0 ? PlayerChatEvent.ChatResult.allowed() : PlayerChatEvent.ChatResult.message(message));
