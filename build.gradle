@@ -22,6 +22,7 @@ dependencies {
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     compileOnly(files("/home/lundl/IdeaProjects/PAPISocketBridge/build/libs/PAPISocketBridge-velocity-api.jar"))
     implementation "io.netty:netty-all:4.1.128.Final"
+    implementation("net.dv8tion:JDA:6.4.1")
 }
 
 tasks {

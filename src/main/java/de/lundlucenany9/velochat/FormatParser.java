@@ -4,6 +4,8 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import de.lundlucenanny9.papisocketbridge.api.PlaceholderBridgeApi;
 import de.lundlucenanny9.papisocketbridge.api.PlaceholderBridgeProvider;
+import de.lundlucenany9.velochat.discord.Bot;
+import net.dv8tion.jda.api.entities.Message;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -80,6 +82,14 @@ public class FormatParser {
                     );
         }
 
+        return CompletableFuture.completedFuture(
+                MiniMessage.miniMessage().deserialize(
+                        format,
+                        resolver
+                )
+        );
+    }
+    public CompletableFuture<Component> parseWithResolver(String format, TagResolver resolver) {
         return CompletableFuture.completedFuture(
                 MiniMessage.miniMessage().deserialize(
                         format,
@@ -170,12 +180,20 @@ public class FormatParser {
     }
 
     public void sendChat(String msg, Player player) {
-        List<Player> recipients = getRecipients(player);
+        List<Player> recipients = GroupUtil.getRecipients(player);
+        String group = GroupUtil.getGroup(player);
+        boolean hasDiscordTarget = group != null
+                && !group.isBlank()
+                && config.isDiscordEnabled()
+                && config.getDiscordGroupMappings().containsKey(group);
+        if (recipients.isEmpty() && !hasDiscordTarget) {
+            return;
+        }
         Set<UUID> recipientIds = new java.util.HashSet<>();
         for (Player target : recipients) {
             recipientIds.add(target.getUniqueId());
         }
-        String replyId = ReplyRegistry.register(player, msg, recipientIds);
+        String replyId = ReplyRegistry.register(player.getUniqueId().toString(), player.getUsername(), msg, recipientIds, ReplyRegistry.Origin.MINECRAFT, group);
         ReplyRegistry.ReplyContext replyContext = ReplyRegistry.get(replyId);
         String snippet = replyContext == null ? "" : replyContext.snippet();
         TagResolver resolver = TagResolver.resolver(new ChatTagResolver(player, msg, replyId, snippet));
@@ -194,8 +212,20 @@ public class FormatParser {
                             return null;
                         })
                         : CompletableFuture.completedFuture(null);
+        CompletableFuture<String> discordMessageIdFuture = Bot.getInstance()
+                .sendMessage(group, msg)
+                .exceptionally(ex -> {
+                    logger.warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
+                    return null;
+                });
         normalFuture.thenCombine(blockedFuture, (component, blockedComponent) -> {
-            ReplyRegistry.updateFullMessage(replyId, component);
+            discordMessageIdFuture
+                    .thenAccept(discordMessageId ->
+                            ReplyRegistry.updateFullMessage(replyId, component, ReplyRegistry.Origin.MINECRAFT, discordMessageId))
+                    .exceptionally(ex -> {
+                        logger.warn("Failed to update reply context with Discord message id: {}", ex.getMessage());
+                        return null;
+                    });
             proxy.getScheduler().buildTask(plugin, () -> {
                 if (config.isGlobal_chat()) {
                     sendToRecipients(player, recipients, component, blockedComponent);
@@ -204,39 +234,40 @@ public class FormatParser {
                 }
             }).schedule();
             return null;
+        }).exceptionally(ex -> {
+            logger.warn("Failed to deliver chat message: {}", ex.getMessage());
+            return null;
         });
     }
 
-    public List<Player> getRecipients(Player sender) {
-        List<Player> targets = new java.util.ArrayList<>();
-        if (config.global_chat) {
-            String senderServer = sender.getCurrentServer()
-                    .map(server -> server.getServerInfo().getName())
-                    .orElse(null);
-            String senderGroup = senderServer == null ? null : findChatGroup(senderServer);
-            if (senderGroup != null) {
-                proxy.getAllPlayers().forEach(target -> target.getCurrentServer().ifPresent(server -> {
-                    String targetServer = server.getServerInfo().getName();
-                    if (!senderGroup.equals(findChatGroup(targetServer))) {
-                        return;
-                    }
-                    boolean listed = config.getServers().contains(targetServer);
-                    if (config.isBlacklist() != listed) {
-                        targets.add(target);
-                    }
-                }));
-            } else if (config.broadcast_message) {
-                sender.getCurrentServer().ifPresent(server ->
-                        targets.addAll(server.getServer().getPlayersConnected())
-                );
-            }
-        } else if (config.broadcast_message) {
-            sender.getCurrentServer().ifPresent(server ->
-                    targets.addAll(server.getServer().getPlayersConnected())
-            );
+    public void sendDiscordChat(Message message) {
+        List<Player> recipients = GroupUtil.getRecipients(message.getChannelId());
+        Set<UUID> recipientIds = new java.util.HashSet<>();
+        for (Player target : recipients) {
+            recipientIds.add(target.getUniqueId());
         }
-        return targets;
+        String replyId = ReplyRegistry.register(message.getAuthor().getId(), message.getAuthor().getEffectiveName(),message.getContentRaw(), recipientIds, ReplyRegistry.Origin.DISCORD, GroupUtil.getGroup(message.getChannelId()));
+        ReplyRegistry.ReplyContext replyContext = ReplyRegistry.get(replyId);
+        String snippet = replyContext == null ? "" : replyContext.snippet();
+        TagResolver resolver = TagResolver.resolver(new DiscordTagResolver(message.getAuthor(), message.getContentStripped(), replyId, snippet));
+        String format = ReplyFormatUtil.applyTokens(config.format, replyContext);
+        String blockedFormat = ReplyFormatUtil.applyTokens(config.getBlockedFormat(), replyContext);
+        CompletableFuture<Component> normalFuture = parseWithResolver(format, resolver)
+                .exceptionally(ex -> {
+                    logger.warn("Failed to render chat message: {}", ex.getMessage());
+                    return Component.text(message.getContentStripped());
+                });
+        normalFuture.thenAccept((component) -> {
+            ReplyRegistry.updateFullMessage(replyId, component, ReplyRegistry.Origin.DISCORD, message.getId());
+            proxy.getScheduler().buildTask(plugin, () -> {
+                if (config.isGlobal_chat()) {
+                    sendToRecipients(recipients, component);
+                }
+            }).schedule();
+
+        });
     }
+
 
     private void sendToRecipients(Player sender,
                                   List<Player> recipients,
@@ -255,16 +286,13 @@ public class FormatParser {
             }
         }
     }
-
-    private String findChatGroup(String serverName) {
-        if (serverName == null) {
-            return null;
+    private void sendToRecipients(
+                                  List<Player> recipients,
+                                  Component normalMessage) {
+        for (Player target : recipients) {
+            target.sendMessage(normalMessage);
         }
-        for (Map.Entry<String, List<String>> entry : config.getChatGroups().entrySet()) {
-            if (entry.getValue() != null && entry.getValue().contains(serverName)) {
-                return entry.getKey();
-            }
-        }
-        return null;
     }
+
+
 }
