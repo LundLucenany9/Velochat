@@ -93,11 +93,38 @@ public final class ReplyService {
         String snippet = context == null ? "" : context.snippet();
         String replyId = context == null ? "" : context.id();
         Component fullMessage = context == null ? Component.empty() : context.fullMessage();
-        TagResolver headerResolver = target != null
-                ? TagResolver.resolver(new SingleTagResolver(target, ""),
-                new ReplyTagResolver(replyId, snippet, fullMessage))
-                : TagResolver.resolver(new ContextTagResolver(context == null ? "" : context.senderName()),
-                new ReplyTagResolver(replyId, snippet, fullMessage));
+        // Build header resolver based on context origin
+        TagResolver headerResolver;
+        if (target != null) {
+            headerResolver = TagResolver.resolver(
+                    new SingleTagResolver(target, ""),
+                    new ReplyTagResolver(replyId, snippet, fullMessage));
+        } else if (context != null && context.origin() == ReplyRegistry.Origin.DISCORD) {
+            // Try to fetch the original Discord member for role/color tags
+            net.dv8tion.jda.api.entities.Member contextMember = null;
+            try {
+                de.lundlucenany9.velochat.discord.DiscordBot bot = Bot.getInstance();
+                if (!(bot instanceof de.lundlucenany9.velochat.discord.EnabledDiscordBot)) throw new IllegalStateException("Discord not enabled");
+                net.dv8tion.jda.api.JDA jda = ((de.lundlucenany9.velochat.discord.EnabledDiscordBot) bot).getJda();
+                net.dv8tion.jda.api.entities.Guild guild = jda.getGuildById(Velochat.getConfig().getDiscordGuild());
+                if (guild != null) {
+                    contextMember = guild.getMemberById(context.senderId());
+                }
+            } catch (Exception ignored) {}
+            if (contextMember != null) {
+                headerResolver = TagResolver.resolver(
+                        new DiscordTagResolver(contextMember, snippet, replyId, snippet),
+                        new ReplyTagResolver(replyId, snippet, fullMessage));
+            } else {
+                headerResolver = TagResolver.resolver(
+                        new ContextTagResolver(context.senderName()),
+                        new ReplyTagResolver(replyId, snippet, fullMessage));
+            }
+        } else {
+            headerResolver = TagResolver.resolver(
+                    new ContextTagResolver(context == null ? "" : context.senderName()),
+                    new ReplyTagResolver(replyId, snippet, fullMessage));
+        }
 
         // For Discord replies on MC-origin messages, use the original MC sender as PAPI context
         Player papiContextPlayer = source.player();

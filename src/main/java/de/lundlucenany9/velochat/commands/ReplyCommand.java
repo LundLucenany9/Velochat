@@ -38,7 +38,8 @@ public final class ReplyCommand {
                                     if (contextById != null) {
                                         String playerGroup = GroupUtil.getGroup(source);
                                         String contextGroup = contextById.group();
-                                        boolean sameGroup = playerGroup != null && playerGroup.equals(contextGroup);
+                                        boolean sameGroup = playerGroup == null && contextGroup == null
+                                                || playerGroup != null && playerGroup.equals(contextGroup);
                                         if (!sameGroup) {
                                             String template = MessagesUtil.template(
                                                     Velochat.getMessages().reply_context_invalid,
