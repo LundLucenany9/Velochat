@@ -68,7 +68,15 @@ public class MuteCommand {
                                    String targetName,
                                    String durationText,
                                    String serversText) {
-        long durationSeconds = parseDurationSeconds(durationText);
+        Long durationSeconds = parseDurationSeconds(durationText);
+        if (durationSeconds == null) {
+            source.sendMessage(MessageUtil.render(
+                    source instanceof Player p ? p : null,
+                    "<red>Invalid duration. Use values like 60s, 5m, 1h, 1d or -1.</red>",
+                    null
+            ));
+            return Command.SINGLE_SUCCESS;
+        }
         Set<String> servers = parseServers(serversText);
         proxy.getPlayer(targetName).ifPresentOrElse(target -> {
             Velochat.getMuteManager().mute(target.getUniqueId(), "manual", durationSeconds, servers);
@@ -85,7 +93,10 @@ public class MuteCommand {
                     )
             ));
             String mutedTemplate = MessagesUtil.template(Velochat.getMessages().muted, "<red>You are muted.</red>");
-            target.sendMessage(MessageUtil.render(target, mutedTemplate, null));
+            target.sendMessage(MessageUtil.render(target, mutedTemplate, Map.of(
+                    "duration", durationText,
+                    "reason", "manual"
+            )));
         }, () -> {
             String template = MessagesUtil.template(
                     Velochat.getMessages().player_not_online,
@@ -100,16 +111,20 @@ public class MuteCommand {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static long parseDurationSeconds(String text) {
+    private static Long parseDurationSeconds(String text) {
         if (text == null || text.isBlank()) {
-            return 0;
+            return null;
         }
         if ("-1".equals(text)) {
-            return -1;
+            return -1L;
         }
         try {
-            return Long.parseLong(text);
+            long value = Long.parseLong(text);
+            return value >= 0 ? value : null;
         } catch (NumberFormatException ignored) {
+        }
+        if (text.length() < 2) {
+            return null;
         }
         String number = text.substring(0, text.length() - 1);
         String unit = text.substring(text.length() - 1).toLowerCase();
@@ -117,14 +132,17 @@ public class MuteCommand {
         try {
             value = Long.parseLong(number);
         } catch (NumberFormatException e) {
-            return 0;
+            return null;
+        }
+        if (value < 0) {
+            return null;
         }
         return switch (unit) {
             case "s" -> value;
             case "m" -> TimeUnit.MINUTES.toSeconds(value);
             case "h" -> TimeUnit.HOURS.toSeconds(value);
             case "d" -> TimeUnit.DAYS.toSeconds(value);
-            default -> 0;
+            default -> null;
         };
     }
 

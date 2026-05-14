@@ -15,7 +15,7 @@ public class Config {
         return chat_groups == null ? Collections.emptyMap() : chat_groups;
     }
 
-    public boolean isGlobal_chat() {
+    public boolean isGlobalChat() {
         return global_chat;
     }
 
@@ -23,25 +23,25 @@ public class Config {
         return use_minimessage;
     }
 
-    public boolean isUse_papi_socket_bridge() {
+    public boolean isUsePapiSocketBridge() {
         return use_papi_socket_bridge || use_papi_proxy_bridge;
     }
 
-    public boolean isUse_papi_proxy_bridge() {
+    public boolean isUsePapiProxyBridge() {
         return use_papi_proxy_bridge;
     }
 
     public String getFormat() {
-        return format;
+        return format != null ? format : "<message>";
     }
     public boolean isBlacklist() {
         return blacklist;
     }
-    public int getForward_mode() {
+    public int getForwardMode() {
         return forward_mode;
     }
 
-    public boolean isBroadcast_message() {
+    public boolean isBroadcastMessage() {
         return broadcast_message;
     }
 
@@ -97,10 +97,10 @@ public class Config {
     public boolean isFilterLeetspeak() {
         return filter_leetspeak;
     }
-    public boolean isBan_alternate_fonts() {
+    public boolean isBanAlternateFonts() {
         return ban_alternate_fonts;
     }
-    public String getBan_alternate_fonts_permission() {
+    public String getBanAlternateFontsPermission() {
         return ban_alternate_fonts_permission;
     }
     public int getTcpSocketPort() {
@@ -120,6 +120,42 @@ public class Config {
     }
     public int getNetty_port() {
         return netty_port;
+    }
+    public String getDiscordGuild() {
+        return discord_guild;
+    }
+    public String getDiscordToken() {
+        return discord_token;
+    }
+    public Map<String, String> getDiscordGroupMappings() {
+        return discord_group_mappings;
+    }
+    public String getDiscordServerName() {
+        return discord_server_name;
+    }
+    public boolean isDiscordEnabled() {
+        return discord_enable;
+    }
+    public boolean isDiscordFilterEnabled() {
+        return discord_filter_enabled;
+    }
+    public String getDiscordMessageFormat() {
+        return discord_message_format != null ? discord_message_format : "<message>";
+    }
+    public String getDiscordReplyFormat() {
+        return discord_reply_format;
+    }
+    public String getDiscordFormat() {
+        return discord_format != null ? discord_format : "<<username>> <message>";
+    }
+    public boolean isDiscordInvalidateMinecraft() {
+        return discord_invalidate_minecraft;
+    }
+    public boolean isDiscordInvalidateDiscord() {
+        return discord_invalidate_discord;
+    }
+    public String getMinecraftFormatReplacement() {
+        return minecraft_format_replacement;
     }
 
     List<String> servers;
@@ -157,5 +193,17 @@ public class Config {
     int tcp_socket_port;
     boolean use_netty;
     int netty_port;
+    String discord_token;
+    String discord_guild;
+    String discord_server_name;
+    Map<String, String > discord_group_mappings;
+    boolean discord_enable;
+    boolean discord_filter_enabled;
+    String discord_message_format;
+    String discord_reply_format;
+    String discord_format;
+    boolean discord_invalidate_minecraft;
+    boolean discord_invalidate_discord;
+    String minecraft_format_replacement;
 
 }

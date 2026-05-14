@@ -4,13 +4,7 @@ import com.velocitypowered.api.proxy.Player;
 
 import net.kyori.adventure.text.Component;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,27 +19,30 @@ public final class ReplyRegistry {
             return size() > MAX_ENTRIES;
         }
     };
-    private static final Map<UUID, String> LAST_BY_SENDER = new HashMap<>();
+    private static final Map<String, String> LAST_BY_SENDER = new HashMap<>();
     private static final Map<UUID, LastPrivateContact> LAST_PRIVATE_BY_RECIPIENT = new HashMap<>();
 
     private ReplyRegistry() {
     }
 
-    public static synchronized String register(Player sender, String message, Set<UUID> recipients) {
+    public static synchronized String register(String senderId, String sender, String message, Set<UUID> recipients, Origin origin, String group) {
         String id = Integer.toString(COUNTER.incrementAndGet(), 36);
         String snippet = buildSnippet(message);
         Set<UUID> recipientSet = recipients == null ? Collections.emptySet() : new HashSet<>(recipients);
-        ReplyContext context = new ReplyContext(id, sender.getUniqueId(), sender.getUsername(), snippet, null, recipientSet);
+        ReplyContext context = new ReplyContext(id, senderId, sender, snippet, null, recipientSet, origin, null, group);
         ENTRIES.put(id, context);
-        LAST_BY_SENDER.put(sender.getUniqueId(), id);
+        LAST_BY_SENDER.put(senderId, id);
         return id;
     }
 
     public static synchronized ReplyContext get(String id) {
         return ENTRIES.get(id);
     }
+    public static synchronized Optional<ReplyContext> getByMessageId(String id) {
+        return ENTRIES.values().stream().filter(e -> Objects.equals(e.discordMessageId, id)).findFirst();
+    }
 
-    public static synchronized void updateFullMessage(String id, Component fullMessage) {
+    public static synchronized void updateFullMessage(String id, Component fullMessage, Origin origin, String dcMessageId) {
         ReplyContext existing = ENTRIES.get(id);
         if (existing == null) {
             return;
@@ -56,13 +53,16 @@ public final class ReplyRegistry {
                 existing.senderName(),
                 existing.snippet(),
                 fullMessage,
-                existing.recipients()
+                existing.recipients(),
+                origin,
+                dcMessageId,
+                existing.group
         );
         ENTRIES.put(id, updated);
     }
 
     public static synchronized ReplyContext getLastBySender(UUID sender) {
-        String id = LAST_BY_SENDER.get(sender);
+        String id = sender == null ? null : LAST_BY_SENDER.get(sender.toString());
         return id == null ? null : ENTRIES.get(id);
     }
 
@@ -94,16 +94,23 @@ public final class ReplyRegistry {
      * Immutable reply context used by reply commands.
      */
     public record ReplyContext(String id,
-                               UUID senderId,
+                               String senderId,
                                String senderName,
                                String snippet,
                                Component fullMessage,
-                               Set<UUID> recipients) {
+                               Set<UUID> recipients,
+                               Origin origin,
+                               String discordMessageId,
+                               String group) {
     }
 
     /**
      * Stores the latest private-message sender for a recipient.
      */
     public record LastPrivateContact(UUID senderId, String senderName) {
+    }
+    public enum Origin {
+        MINECRAFT,
+        DISCORD
     }
 }

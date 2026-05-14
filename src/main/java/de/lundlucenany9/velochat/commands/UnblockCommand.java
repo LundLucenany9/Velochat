@@ -33,6 +33,16 @@ public class UnblockCommand {
                             Player sender = (Player) context.getSource();
                             String targetName = context.getArgument("player", String.class);
                             proxy.getPlayer(targetName).ifPresentOrElse(target -> {
+                                if(!Velochat.getBlockManager().hasBlocked(sender.getUniqueId(), target.getUniqueId())) {
+                                    String template = MessagesUtil.template(
+                                            Velochat.getMessages().block_not_found,
+                                            "<red>Player not blocked.</red>"
+                                    );
+                                    sender.sendMessage(MessageUtil.render(sender, template, Map.of(
+                                            "player", targetName
+                                    )));
+                                    return;
+                                }
                                 Velochat.getBlockManager().unblock(sender.getUniqueId(), target.getUniqueId());
                                 String template = MessagesUtil.template(
                                         Velochat.getMessages().block_removed,
@@ -43,8 +53,8 @@ public class UnblockCommand {
                                 )));
                             }, () -> {
                                 String template = MessagesUtil.template(
-                                        Velochat.getMessages().block_not_found,
-                                        "<red>Player not found.</red>"
+                                        Velochat.getMessages().player_not_online,
+                                        "<red>Player not online.</red>"
                                 );
                                 sender.sendMessage(MessageUtil.render(sender, template, Map.of(
                                         "player", targetName

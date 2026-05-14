@@ -23,10 +23,10 @@ public final class FontFilter {
         if (message == null || message.isBlank() || config == null) {
             return false;
         }
-        if (!config.isBan_alternate_fonts()) {
+        if (!config.isBanAlternateFonts()) {
             return false;
         }
-        String bypassPermission = config.getBan_alternate_fonts_permission();
+        String bypassPermission = config.getBanAlternateFontsPermission();
         if (player != null && bypassPermission != null && !bypassPermission.isBlank()
                 && player.hasPermission(bypassPermission)) {
             return false;
