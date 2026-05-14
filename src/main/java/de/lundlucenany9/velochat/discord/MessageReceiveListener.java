@@ -38,7 +38,7 @@ public class MessageReceiveListener extends ListenerAdapter {
                 return;
             }
             ReplyService.sendReply(
-                    ReplyService.ReplySource.discord(event.getMember(), group),
+                    ReplyService.ReplySource.discord(event.getMember(), group, event.getMessageId()),
                     null,
                     event.getMessage().getContentStripped(),
                     context.get()

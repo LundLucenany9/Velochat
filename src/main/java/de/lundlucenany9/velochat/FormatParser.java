@@ -217,7 +217,7 @@ public class FormatParser {
                 .sendMessage(group, msg, player.getUsername())
                 .exceptionally(ex -> {
                     logger.warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
-                    return null;
+                    return "";
                 });
         normalFuture.thenCombine(blockedFuture, (component, blockedComponent) -> {
             discordMessageIdFuture

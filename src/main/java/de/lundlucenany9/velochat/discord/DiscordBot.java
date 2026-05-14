@@ -7,4 +7,5 @@ import java.util.concurrent.CompletableFuture;
 public interface DiscordBot {
     CompletableFuture<String> sendMessage(String group, String message, String senderName);
     JDA getJda();
+    CompletableFuture<String> sendReply(String group, String messageId, String message, String senderName);
 }

@@ -22,7 +22,8 @@ public final class ReplyService {
                               ReplyRegistry.Origin origin,
                               String group,
                               Player player,
-                              Member discordMember) {
+                              Member discordMember,
+                              String discordMessageId) {
         public static ReplySource minecraft(Player player) {
             return new ReplySource(
                     player.getUniqueId().toString(),
@@ -30,17 +31,19 @@ public final class ReplyService {
                     ReplyRegistry.Origin.MINECRAFT,
                     GroupUtil.getGroup(player),
                     player,
+                    null,
                     null
             );
         }
-        public static ReplySource discord(Member member, String group) {
+        public static ReplySource discord(Member member, String group, String discordMessageId) {
             return new ReplySource(
                     member.getId(),
                     member.getEffectiveName(),
                     ReplyRegistry.Origin.DISCORD,
                     group,
                     null,
-                    member
+                    member,
+                    discordMessageId
             );
         }
     }
@@ -157,20 +160,26 @@ public final class ReplyService {
                         : TagResolver.resolver(new GenericChatTagResolver(
                                 source.senderName(), source.group(), message, newReplyId, message));
 
-        CompletableFuture<String> discordFuture = source.origin() == ReplyRegistry.Origin.MINECRAFT
-                ? Bot.getInstance().sendMessage(source.group(), message, source.senderName())
+        CompletableFuture<String> discordFuture = CompletableFuture.completedFuture(null);
+        if (source.origin() == ReplyRegistry.Origin.MINECRAFT) {
+            assert context != null;
+            if(context.discordMessageId() != null)
+                discordFuture = Bot.getInstance().sendReply(source.group(), context.discordMessageId(),message, source.senderName)
                         .exceptionally(ex -> {
                             Velochat.getLogger().warn("Failed to mirror reply to Discord: {}", ex.getMessage());
                             return null;
-                        })
-                : CompletableFuture.completedFuture(null);
+                        });
+        } else {
+            discordFuture = CompletableFuture.completedFuture(source.discordMessageId);
+        }
 
+        CompletableFuture<String> finalDiscordFuture = discordFuture;
         CompletableFuture<Component> normalBody =
                 (resolvedPapiPlayer != null
                         ? Velochat.parser.parseWithResolver(normalFormat, resolvedPapiPlayer, bodyResolver)
                         : Velochat.parser.parseWithResolver(normalFormat, bodyResolver))
                         .thenApply(c -> {
-                            discordFuture.thenAccept(id ->
+                            finalDiscordFuture.thenAccept(id ->
                                     ReplyRegistry.updateFullMessage(newReplyId, c, source.origin(), id));
                             return c;
                         });

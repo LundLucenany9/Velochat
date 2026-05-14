@@ -17,5 +17,10 @@ public final class DisabledDiscordBot implements DiscordBot{
         return null;
     }
 
+    @Override
+    public CompletableFuture<String> sendReply(String group, String messageId, String message, String senderName) {
+        return CompletableFuture.completedFuture(null);
+    }
+
 
 }

@@ -2,7 +2,6 @@ package de.lundlucenany9.velochat;
 
 import com.google.inject.Inject;
 import com.moandjiezana.toml.Toml;
-import com.velocitypowered.api.command.Command;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
@@ -84,7 +83,7 @@ public final class Velochat {
             throw new RuntimeException(e);
         }
         server.getChannelRegistrar().register(MessageHandler.IDENTIFIER);
-        Bot.initializeBot();
+
 
         server.getEventManager().register(this, new ChatListener());
         CommandManager commandManager = server.getCommandManager();
@@ -97,6 +96,8 @@ public final class Velochat {
         registerCommand(commandManager, "unmute", UnmuteCommand.getCommand(server));
         registerCommand(commandManager, "block", BlockCommand.getCommand(server));
         registerCommand(commandManager, "unblock", UnblockCommand.getCommand(server));
+
+        Bot.initializeBot();
     }
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent e) {
@@ -125,7 +126,6 @@ public final class Velochat {
     private void registerCommand(CommandManager manager, String name, BrigadierCommand command) {
         CommandMeta meta = manager.metaBuilder(name)
                 .plugin(this)
-                .hint(command.getNode())
                 .build();
         manager.register(meta, command);
     }
