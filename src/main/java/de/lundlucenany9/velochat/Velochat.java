@@ -2,12 +2,13 @@ package de.lundlucenany9.velochat;
 
 import com.google.inject.Inject;
 import com.moandjiezana.toml.Toml;
-import com.velocitypowered.api.command.Command;
+import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -21,6 +22,7 @@ import de.lundlucenany9.velochat.commands.MuteCommand;
 import de.lundlucenany9.velochat.commands.UnmuteCommand;
 import de.lundlucenany9.velochat.commands.BlockCommand;
 import de.lundlucenany9.velochat.commands.UnblockCommand;
+import de.lundlucenany9.velochat.discord.Bot;
 import de.lundlucenany9.velochat.listeners.ChatListener;
 import org.slf4j.Logger;
 
@@ -82,6 +84,7 @@ public final class Velochat {
         }
         server.getChannelRegistrar().register(MessageHandler.IDENTIFIER);
 
+
         server.getEventManager().register(this, new ChatListener());
         CommandManager commandManager = server.getCommandManager();
         registerCommand(commandManager, "reply", ReplyCommand.getCommand(server));
@@ -93,7 +96,17 @@ public final class Velochat {
         registerCommand(commandManager, "unmute", UnmuteCommand.getCommand(server));
         registerCommand(commandManager, "block", BlockCommand.getCommand(server));
         registerCommand(commandManager, "unblock", UnblockCommand.getCommand(server));
+
+        Bot.initializeBot();
+    }
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent e) {
+        try {
+            messageHandler.shutdownNetty();
+        } catch (InterruptedException ex) {
+            logger.error("MessagHandler shutdown interrupted: {}", ex.getLocalizedMessage(), ex.fillInStackTrace());
         }
+    }
 
     @Subscribe
     public void onPluginMessage(PluginMessageEvent event) {
@@ -110,8 +123,10 @@ public final class Velochat {
         event.setResult(PluginMessageEvent.ForwardResult.handled());
     }
 
-    private void registerCommand(CommandManager manager, String name, Command command) {
-        CommandMeta meta = manager.metaBuilder(name).plugin(this).build();
+    private void registerCommand(CommandManager manager, String name, BrigadierCommand command) {
+        CommandMeta meta = manager.metaBuilder(name)
+                .plugin(this)
+                .build();
         manager.register(meta, command);
     }
     private void saveDefaultConfig() {

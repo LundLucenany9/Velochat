@@ -102,7 +102,7 @@ public final class MuteManager {
 
     public synchronized String remainingFormated(Player player) {
         Duration duration = remaining(player);
-        if(duration == null) return "Invalid Duration";
+        if(duration == null) return "permanent";
         long hours   = duration.toHoursPart();
         long minutes = duration.toMinutesPart();
         long seconds = duration.toSecondsPart();

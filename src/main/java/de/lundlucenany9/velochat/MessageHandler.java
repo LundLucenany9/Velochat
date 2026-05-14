@@ -24,6 +24,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.List;
@@ -36,6 +40,23 @@ public class MessageHandler {
     public static final MinecraftChannelIdentifier IDENTIFIER = MinecraftChannelIdentifier.from("velochat:main");
     private static final String LOOPBACK = "127.0.0.1";
     private final List<MessageEventListener> listeners = new CopyOnWriteArrayList<>();
+    private final EventLoopGroup nettyClientGroup = new NioEventLoopGroup(1);
+    private final ExecutorService ioExecutor = new ThreadPoolExecutor(
+            2, 16,
+            60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(256),
+            r -> {
+                Thread t = new Thread(r, "velochat-io");
+                t.setDaemon(true);
+                return t;
+            },
+            (task, executor) -> Velochat.getLogger().warn(
+                    "velochat-io queue full, dropping IO task"
+            )
+    );
+    private final EventLoopGroup nettyBossGroup = new NioEventLoopGroup(1);
+    private final EventLoopGroup nettyWorkerGroup = new NioEventLoopGroup();
+
 
     public MessageHandler() throws IOException {
         if(Velochat.getConfig().isUseTcpSocket()) {
@@ -46,19 +67,20 @@ public class MessageHandler {
         }
     }
     public void startServer() {
-        new Thread(() -> {
+        Thread tcpAcceptThread = new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(Velochat.getConfig().tcp_socket_port)) {
 
                 while (true) {
                     Socket socket = serverSocket.accept();
-
-                    new Thread(() -> handleTcp(socket)).start();
+                    ioExecutor.execute(() -> handleTcp(socket));
                 }
 
             } catch (IOException e) {
                 Velochat.getLogger().warn("IO exception occurred while accepting tcp socket: {}", e.getLocalizedMessage());
             }
-        }).start();
+        }, "velochat-tcp-accept");
+        tcpAcceptThread.setDaemon(true);
+        tcpAcceptThread.start();
     }
 
     private void handleTcp(Socket socket) {
@@ -169,55 +191,61 @@ public class MessageHandler {
             Velochat.getLogger().warn("plugin_message_server is empty or not recognised; skipping plugin message send.");
     }
     private void sendTcpMessage(byte[] data) {
-        try (
-                Socket socket = new Socket(LOOPBACK, Velochat.getConfig().getTcpSocketPort());
+        byte[] copy = data.clone();
+        ioExecutor.execute(()-> {
+            try (
+                    Socket socket = new Socket()
+            ) {
+                socket.connect(new java.net.InetSocketAddress(LOOPBACK, Velochat.getConfig().getTcpSocketPort()), 3000);
+                socket.setSoTimeout(3000);
                 DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                DataInputStream in = new DataInputStream(socket.getInputStream())
-        ) {
-            out.writeUTF(new String(data, StandardCharsets.UTF_8));
-            String response = in.readUTF();
-            System.out.println("TCP response: " + response);
-        } catch (IOException e) {
-            Velochat.getLogger().warn("Error occurred while sending tcp message: {}", e.getLocalizedMessage(), e.fillInStackTrace());
-        }
+                DataInputStream in = new DataInputStream(socket.getInputStream());
+                out.writeUTF(new String(copy, StandardCharsets.UTF_8));
+                String response = in.readUTF();
+                Velochat.getLogger().debug("TCP response: {}", response);
+            } catch (IOException e) {
+                Velochat.getLogger().warn("Error occurred while sending tcp message: {}", e.getLocalizedMessage(), e.fillInStackTrace());
+            }
+        });
+
     }
 
     private void sendNettyMessage(byte[] data) {
-        Config config = Velochat.getConfig();
-        EventLoopGroup group = new NioEventLoopGroup(1);
-        try {
-            Bootstrap bootstrap = new Bootstrap()
-                    .group(group)
-                    .channel(NioSocketChannel.class)
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(new SimpleChannelInboundHandler<ByteBuf>() {
-                                @Override
-                                protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
-                                    String response = msg.toString(StandardCharsets.UTF_8);
-                                    System.out.println("Netty response: " + response);
-                                }
-                            });
-                        }
-                    })
-                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000);
+        ioExecutor.execute(()->{
+            Config config = Velochat.getConfig();
+            try {
+                Bootstrap bootstrap = new Bootstrap()
+                        .group(nettyClientGroup)
+                        .channel(NioSocketChannel.class)
+                        .handler(new ChannelInitializer<SocketChannel>() {
+                            @Override
+                            protected void initChannel(SocketChannel ch) {
+                                ch.pipeline().addLast(new SimpleChannelInboundHandler<ByteBuf>() {
+                                    @Override
+                                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
+                                        String response = msg.toString(StandardCharsets.UTF_8);
+                                        Velochat.getLogger().debug("Netty response: {}", response);
+                                    }
+                                });
+                            }
+                        })
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000);
 
-            ChannelFuture connectFuture = bootstrap.connect(LOOPBACK, config.getNetty_port()).sync();
-            connectFuture.channel().writeAndFlush(Unpooled.wrappedBuffer(data)).sync();
-            connectFuture.channel().close().sync();
-        } catch (InterruptedException e) {
-            Velochat.getLogger().warn("Error occurred while closing ChannelFuture: {}", e.getLocalizedMessage(), e.fillInStackTrace());
-            Thread.currentThread().interrupt();
-        } finally {
-            group.shutdownGracefully();
-        }
+                ChannelFuture connectFuture = bootstrap.connect(LOOPBACK, config.getNetty_port()).sync();
+                connectFuture.channel().writeAndFlush(Unpooled.wrappedBuffer(data)).sync();
+                connectFuture.channel().close().sync();
+            } catch (InterruptedException e) {
+                Velochat.getLogger().warn("Error occurred while closing ChannelFuture: {}", e.getLocalizedMessage(), e.fillInStackTrace());
+                Thread.currentThread().interrupt();
+            }
+        });
+
     }
 
     public void startNettyServer() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        new Thread(() -> {
+        EventLoopGroup bossGroup = nettyBossGroup;
+        EventLoopGroup workerGroup = nettyWorkerGroup;
+        Thread acceptThread = new Thread(() -> {
             try {
                 ServerBootstrap bootstrap = new ServerBootstrap()
                         .group(bossGroup, workerGroup)
@@ -248,7 +276,14 @@ public class MessageHandler {
                 bossGroup.shutdownGracefully();
                 workerGroup.shutdownGracefully();
             }
-        }).start();
+        },"velochat-tcp-accept");
+        acceptThread.setDaemon(true);
+        acceptThread.start();
+    }
+    public void shutdownNetty() throws InterruptedException {
+        nettyWorkerGroup.shutdownGracefully().sync();
+        nettyBossGroup.shutdownGracefully().sync();
+        nettyClientGroup.shutdownGracefully().sync();
     }
 
     private String toJson(OutboundMessage payload) {
