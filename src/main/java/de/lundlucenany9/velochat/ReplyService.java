@@ -104,14 +104,22 @@ public final class ReplyService {
         }
         final Player resolvedPapiPlayer = papiContextPlayer;
 
-        String replyFormat = ReplyFormatUtil.applyTokens(config.getReplyFormat(), context);
+        boolean discordSource = source.origin() == ReplyRegistry.Origin.DISCORD;
+
+        String replyFormatTemplate = discordSource
+                ? config.getDiscordReplyFormat()
+                : config.getReplyFormat();
+        String replyFormat = ReplyFormatUtil.applyTokens(replyFormatTemplate, context);
         CompletableFuture<Component> header = target != null
                 ? Velochat.parser.parseWithResolver(replyFormat, target, headerResolver)
                 : resolvedPapiPlayer != null
                         ? Velochat.parser.parseWithResolver(replyFormat, resolvedPapiPlayer, headerResolver)
                         : Velochat.parser.parseWithResolver(replyFormat, headerResolver);
 
-        String normalFormat = ReplyFormatUtil.applyTokens(config.getFormat(), newReplyContext);
+        String normalFormatTemplate = discordSource
+                ? config.getDiscordMessageFormat()
+                : config.getFormat();
+        String normalFormat = ReplyFormatUtil.applyTokens(normalFormatTemplate, newReplyContext);
         String blockedFormatTemplate = config.getBlockedReplyFormat() == null
                 ? config.getFormat()
                 : config.getBlockedReplyFormat();
@@ -127,7 +135,7 @@ public final class ReplyService {
                 ));
 
         CompletableFuture<String> discordMessageIdFuture = source.origin() == ReplyRegistry.Origin.MINECRAFT
-                ? Bot.getInstance().sendMessage(source.group(), message)
+                ? Bot.getInstance().sendMessage(source.group(), message, source.senderName())
                         .exceptionally(ex -> {
                             Velochat.getLogger().warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
                             return null;

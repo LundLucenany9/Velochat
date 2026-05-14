@@ -7,6 +7,9 @@ import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.exceptions.InvalidTokenException;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
 import java.util.EnumSet;
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +24,7 @@ public final class EnabledDiscordBot implements DiscordBot{
                     )
                     .addEventListeners(new MessageReceiveListener())
                     .build().awaitReady();
+            Velochat.getLogger().info("Discord bot connected as {}", jda.getSelfUser().getEffectiveName());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Bot initialization was interrupted", e);
@@ -30,13 +34,18 @@ public final class EnabledDiscordBot implements DiscordBot{
     }
 
 
-    public CompletableFuture<String> sendMessage(String group, String message) {
+    public CompletableFuture<String> sendMessage(String group, String message, String senderName) {
         return resolveChannel(group)
                 .thenCompose(channel ->
-                        channel.sendMessage(message)
+                        channel.sendMessage(MiniMessage.miniMessage().deserialize(Velochat.getConfig().getDiscordFormat(), Placeholder.parsed("message", message), Placeholder.parsed("username", senderName)).toString())
                                 .submit()
                 )
                 .thenApply(ISnowflake::getId);
+    }
+
+    @Override
+    public JDA getJda() {
+        return jda;
     }
 
 

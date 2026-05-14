@@ -5,6 +5,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import de.lundlucenanny9.papisocketbridge.api.PlaceholderBridgeApi;
 import de.lundlucenanny9.papisocketbridge.api.PlaceholderBridgeProvider;
 import de.lundlucenany9.velochat.discord.Bot;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -213,7 +214,7 @@ public class FormatParser {
                         })
                         : CompletableFuture.completedFuture(null);
         CompletableFuture<String> discordMessageIdFuture = Bot.getInstance()
-                .sendMessage(group, msg)
+                .sendMessage(group, msg, player.getUsername())
                 .exceptionally(ex -> {
                     logger.warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
                     return null;
@@ -240,18 +241,17 @@ public class FormatParser {
         });
     }
 
-    public void sendDiscordChat(Message message) {
+    public void sendDiscordChat(Message message, Member author) {
         List<Player> recipients = GroupUtil.getRecipients(message.getChannelId());
         Set<UUID> recipientIds = new java.util.HashSet<>();
         for (Player target : recipients) {
             recipientIds.add(target.getUniqueId());
         }
-        String replyId = ReplyRegistry.register(message.getAuthor().getId(), message.getAuthor().getEffectiveName(),message.getContentRaw(), recipientIds, ReplyRegistry.Origin.DISCORD, GroupUtil.getGroup(message.getChannelId()));
+        String replyId = ReplyRegistry.register(author.getId(), author.getEffectiveName(),message.getContentRaw(), recipientIds, ReplyRegistry.Origin.DISCORD, GroupUtil.getGroup(message.getChannelId()));
         ReplyRegistry.ReplyContext replyContext = ReplyRegistry.get(replyId);
         String snippet = replyContext == null ? "" : replyContext.snippet();
-        TagResolver resolver = TagResolver.resolver(new DiscordTagResolver(message.getAuthor(), message.getContentStripped(), replyId, snippet));
-        String format = ReplyFormatUtil.applyTokens(config.format, replyContext);
-        String blockedFormat = ReplyFormatUtil.applyTokens(config.getBlockedFormat(), replyContext);
+        TagResolver resolver = TagResolver.resolver(new DiscordTagResolver(author, message.getContentStripped(), replyId, snippet));
+        String format = ReplyFormatUtil.applyTokens(config.getDiscordMessageFormat(), replyContext);
         CompletableFuture<Component> normalFuture = parseWithResolver(format, resolver)
                 .exceptionally(ex -> {
                     logger.warn("Failed to render chat message: {}", ex.getMessage());

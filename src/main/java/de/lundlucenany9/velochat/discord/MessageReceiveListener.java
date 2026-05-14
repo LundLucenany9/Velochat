@@ -30,11 +30,11 @@ public class MessageReceiveListener extends ListenerAdapter {
 
         MessageReference reference = event.getMessage().getMessageReference();
         if (reference == null)
-            Velochat.parser.sendDiscordChat(event.getMessage());
+            Velochat.parser.sendDiscordChat(event.getMessage(), event.getMember());
         else {
             Optional<ReplyRegistry.ReplyContext> context = ReplyRegistry.getByMessageId(reference.getMessageId());
             if (context.isEmpty()) {
-                Velochat.parser.sendDiscordChat(event.getMessage());
+                Velochat.parser.sendDiscordChat(event.getMessage(), event.getMember());
                 return;
             }
             ReplyService.sendReply(

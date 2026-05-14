@@ -8,7 +8,7 @@ global-chat = true
 # Use MiniMessage for formatting.
 use_minimessage = true
 # Main chat format. Tags: <server>, <username>, <ping>, <message>, <reply_id>, <reply_snippet>.
-format = "<dark_gray>[<yellow><server></yellow>]</dark_gray> <hover:show_text:'Klicken um privat zu schreiben'><click:suggest_command:'/reply <reply_id> '><gray><username></gray></click></hover><dark_gray>: <gray><message></gray>"
+format = "<dark_gray>[<yellow><server></yellow>]</dark_gray> <hover:show_text:'Klicken um privat zu schreiben'><click:suggest_command:'/msg %player_name% '>%vault_prefix% <gray><username></click></hover><dark_gray>: <#c1cfd4><hover:show_text:'Klicken zum antworten'><click:suggest_command:'/reply <reply_id> '><message></click></hover>"
 # Format used when sender/receiver are blocked. Should be a lightweight/gray version of format.
 blocked_format = "<gray><username>: <message></gray>"
 
@@ -22,7 +22,7 @@ use_papi_proxy_bridge = false
 # Reply formatting
 # -------------------------
 # Header shown above the reply message. Tags: <username>, <reply_snippet>, <reply_full>, <reply_id>.
-replyFormat = "<dark_gray>┌─(<gray><italic><username></italic></gray> <dark_gray>-</dark_gray> <hover:show_text:'<reply_full>'><gray><reply_snippet></gray></hover>)</dark_gray>"
+replyFormat = "<dark_gray>┌─(<gray><italic>%vault_prefix% <username></italic></gray> <dark_gray>-</dark_gray> <hover:show_text:'<reply_full>'><gray><reply_snippet></gray></hover>)</dark_gray>"
 # Prefix inserted between header and body.
 replayMessagePrefix = "<dark_gray>└<dark_gray>"
 # Format used for reply messages from blocked players.
@@ -117,3 +117,9 @@ discord_server_name = "Your Server"
 # add your group to channel mappings here
 # discord_group_mappings = {lobby = "1231323", survival = "556234}
 discord_group_mappings = {}
+# Main chat format. Tags: <server> = discord_server_name, <username>, <message>, <reply_id>, <reply_snippet>, <role_highest>, <role_first_color>.
+discord_message_format = "<dark_gray>[<yellow><server></yellow>]</dark_gray> <role_first_color> <gray><username><dark_gray>: <#c1cfd4><hover:show_text:'Klicken zum antworten'><click:suggest_command:'/reply <reply_id> '><message></click></hover>"
+# Header shown above the reply message. Tags: <username>, <reply_snippet>, <reply_full>, <reply_id>, <role_highest>, <role_first_color>.
+discord_reply_format = "<dark_gray>┌─(<gray><italic><role_first_color> <username></italic></gray> <dark_gray>-</dark_gray> <hover:show_text:'<reply_full>'><gray><reply_snippet></gray></hover>)</dark_gray>"
+# format used to send messages to discord channels: <username>, <message>.
+discord_format = "<<username>> <message>"

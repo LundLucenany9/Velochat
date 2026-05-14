@@ -136,6 +136,15 @@ public class Config {
     public boolean isDiscordEnabled() {
         return discord_enable;
     }
+    public String getDiscordMessageFormat() {
+        return discord_message_format;
+    }
+    public String getDiscordReplyFormat() {
+        return discord_reply_format;
+    }
+    public String getDiscordFormat() {
+        return discord_format;
+    }
 
     List<String> servers;
     Map<String, List<String>> chat_groups;
@@ -177,5 +186,8 @@ public class Config {
     String discord_server_name;
     Map<String, String > discord_group_mappings;
     boolean discord_enable;
+    String discord_message_format;
+    String discord_reply_format;
+    String discord_format;
 
 }
