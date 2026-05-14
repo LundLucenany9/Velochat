@@ -1,7 +1,9 @@
 package de.lundlucenany9.velochat;
 
 import com.velocitypowered.api.proxy.Player;
+import de.lundlucenany9.velochat.DiscordTagResolver;
 import de.lundlucenany9.velochat.discord.Bot;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
@@ -21,23 +23,26 @@ public final class ReplyService {
                               String senderName,
                               ReplyRegistry.Origin origin,
                               String group,
-                              Player player) {
+                              Player player,
+                              Member discordMember) {
         public static ReplySource minecraft(Player player) {
             return new ReplySource(
                     player.getUniqueId().toString(),
                     player.getUsername(),
                     ReplyRegistry.Origin.MINECRAFT,
                     GroupUtil.getGroup(player),
-                    player
+                    player,
+                    null
             );
         }
-        public static ReplySource discord(User user, String group) {
+        public static ReplySource discord(Member member, String group) {
             return new ReplySource(
-                    user.getId(),
-                    user.getEffectiveName(),
+                    member.getId(),
+                    member.getEffectiveName(),
                     ReplyRegistry.Origin.DISCORD,
                     group,
-                    null
+                    null,
+                    member
             );
         }
     }
@@ -116,9 +121,11 @@ public final class ReplyService {
                         ? Velochat.parser.parseWithResolver(replyFormat, resolvedPapiPlayer, headerResolver)
                         : Velochat.parser.parseWithResolver(replyFormat, headerResolver);
 
-        String normalFormatTemplate = discordSource
-                ? config.getDiscordMessageFormat()
-                : config.getFormat();
+        String normalFormatTemplate = (context != null && context.origin() == ReplyRegistry.Origin.MINECRAFT)
+                ? config.getFormat()
+                : discordSource
+                        ? config.getDiscordMessageFormat()
+                        : config.getFormat();
         String normalFormat = ReplyFormatUtil.applyTokens(normalFormatTemplate, newReplyContext);
         String blockedFormatTemplate = config.getBlockedReplyFormat() == null
                 ? config.getFormat()
@@ -126,13 +133,15 @@ public final class ReplyService {
         String blockedFormat = ReplyFormatUtil.applyTokens(blockedFormatTemplate, newReplyContext);
         TagResolver bodyResolver = source.player() != null
                 ? TagResolver.resolver(new ChatTagResolver(source.player(), message, newReplyId, message))
-                : TagResolver.resolver(new GenericChatTagResolver(
-                        source.senderName(),
-                        source.group(),
-                        message,
-                        newReplyId,
-                        message
-                ));
+                : source.discordMember() != null
+                        ? TagResolver.resolver(new DiscordTagResolver(source.discordMember(), message, newReplyId, message))
+                        : TagResolver.resolver(new GenericChatTagResolver(
+                                source.senderName(),
+                                source.group(),
+                                message,
+                                newReplyId,
+                                message
+                        ));
 
         CompletableFuture<String> discordMessageIdFuture = source.origin() == ReplyRegistry.Origin.MINECRAFT
                 ? Bot.getInstance().sendMessage(source.group(), message, source.senderName())

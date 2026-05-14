@@ -42,7 +42,7 @@ public record DiscordTagResolver(Member user, String message, String replyId, St
                 return (Inserting) () -> Component.text(role == null ? "" : role.getName());
             }
             case "role_first_color" -> {
-                Optional<Role> role = user.getRoles().stream().filter(r -> r.getColors().isDefault()).findFirst();
+                Optional<Role> role = user.getRoles().stream().filter(r -> !r.getColors().isDefault()).findFirst();
                 return (Inserting) () -> Component.text(role.map(Role::getName).orElse("")).color(TextColor.color(role.map(value -> value.getColors().getPrimaryRaw()).orElse(0)));
             }
             default -> {
