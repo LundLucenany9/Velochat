@@ -7,6 +7,7 @@ import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import de.lundlucenany9.velochat.GroupUtil;
 import de.lundlucenany9.velochat.*;
 
 import java.util.Map;
@@ -35,10 +36,10 @@ public final class ReplyCommand {
 
                                     ReplyRegistry.ReplyContext contextById = ReplyRegistry.get(targetName);
                                     if (contextById != null) {
-                                        boolean isSender = contextById.senderId().equals(source.getUniqueId().toString());
-                                        boolean isRecipient = contextById.recipients() != null
-                                                && contextById.recipients().contains(source.getUniqueId());
-                                        if (!isSender && !isRecipient) {
+                                        String playerGroup = GroupUtil.getGroup(source);
+                                        String contextGroup = contextById.group();
+                                        boolean sameGroup = playerGroup != null && playerGroup.equals(contextGroup);
+                                        if (!sameGroup) {
                                             String template = MessagesUtil.template(
                                                     Velochat.getMessages().reply_context_invalid,
                                                     "<red>You cannot reply to that message.</red>"

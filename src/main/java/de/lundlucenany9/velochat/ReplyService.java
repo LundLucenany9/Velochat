@@ -110,10 +110,12 @@ public final class ReplyService {
         final Player resolvedPapiPlayer = papiContextPlayer;
 
         boolean discordSource = source.origin() == ReplyRegistry.Origin.DISCORD;
+        boolean mcContext = context != null && context.origin() == ReplyRegistry.Origin.MINECRAFT;
 
-        String replyFormatTemplate = discordSource
-                ? config.getDiscordReplyFormat()
-                : config.getReplyFormat();
+        // Header shows context of the original message → based on context.origin
+        String replyFormatTemplate = mcContext
+                ? config.getReplyFormat()
+                : config.getDiscordReplyFormat();
         String replyFormat = ReplyFormatUtil.applyTokens(replyFormatTemplate, context);
         CompletableFuture<Component> header = target != null
                 ? Velochat.parser.parseWithResolver(replyFormat, target, headerResolver)
@@ -121,11 +123,10 @@ public final class ReplyService {
                         ? Velochat.parser.parseWithResolver(replyFormat, resolvedPapiPlayer, headerResolver)
                         : Velochat.parser.parseWithResolver(replyFormat, headerResolver);
 
-        String normalFormatTemplate = (context != null && context.origin() == ReplyRegistry.Origin.MINECRAFT)
-                ? config.getFormat()
-                : discordSource
-                        ? config.getDiscordMessageFormat()
-                        : config.getFormat();
+        // Body shows the reply itself → based on source.origin
+        String normalFormatTemplate = discordSource
+                ? config.getDiscordMessageFormat()
+                : config.getFormat();
         String normalFormat = ReplyFormatUtil.applyTokens(normalFormatTemplate, newReplyContext);
         String blockedFormatTemplate = config.getBlockedReplyFormat() == null
                 ? config.getFormat()

@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.exceptions.InvalidTokenException;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
@@ -37,7 +38,7 @@ public final class EnabledDiscordBot implements DiscordBot{
     public CompletableFuture<String> sendMessage(String group, String message, String senderName) {
         return resolveChannel(group)
                 .thenCompose(channel ->
-                        channel.sendMessage(MiniMessage.miniMessage().deserialize(Velochat.getConfig().getDiscordFormat(), Placeholder.parsed("message", message), Placeholder.parsed("username", senderName)).toString())
+                        channel.sendMessage(PlainTextComponentSerializer.plainText().serialize(MiniMessage.miniMessage().deserialize(Velochat.getConfig().getDiscordFormat(), Placeholder.parsed("message", message), Placeholder.parsed("username", senderName))))
                                 .submit()
                 )
                 .thenApply(ISnowflake::getId);
