@@ -3,6 +3,7 @@ package de.lundlucenany9.velochat;
 import com.google.inject.Inject;
 import com.moandjiezana.toml.Toml;
 import com.velocitypowered.api.command.Command;
+import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
@@ -121,8 +122,11 @@ public final class Velochat {
         event.setResult(PluginMessageEvent.ForwardResult.handled());
     }
 
-    private void registerCommand(CommandManager manager, String name, Command command) {
-        CommandMeta meta = manager.metaBuilder(name).plugin(this).build();
+    private void registerCommand(CommandManager manager, String name, BrigadierCommand command) {
+        CommandMeta meta = manager.metaBuilder(name)
+                .plugin(this)
+                .hint(command.getNode())
+                .build();
         manager.register(meta, command);
     }
     private void saveDefaultConfig() {
