@@ -198,7 +198,7 @@ public class FormatParser {
         ReplyRegistry.ReplyContext replyContext = ReplyRegistry.get(replyId);
         String snippet = replyContext == null ? "" : replyContext.snippet();
         TagResolver resolver = TagResolver.resolver(new ChatTagResolver(player, msg, replyId, snippet));
-        String format = ReplyFormatUtil.applyTokens(config.format, replyContext);
+        String format = ReplyFormatUtil.applyTokens(config.getFormat(), replyContext);
         String blockedFormat = ReplyFormatUtil.applyTokens(config.getBlockedFormat(), replyContext);
         CompletableFuture<Component> normalFuture = parseWithResolver(format, player, resolver)
                 .exceptionally(ex -> {

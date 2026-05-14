@@ -32,7 +32,7 @@ public class Config {
     }
 
     public String getFormat() {
-        return format;
+        return format != null ? format : "<message>";
     }
     public boolean isBlacklist() {
         return blacklist;
@@ -137,13 +137,13 @@ public class Config {
         return discord_enable;
     }
     public String getDiscordMessageFormat() {
-        return discord_message_format;
+        return discord_message_format != null ? discord_message_format : "<message>";
     }
     public String getDiscordReplyFormat() {
         return discord_reply_format;
     }
     public String getDiscordFormat() {
-        return discord_format;
+        return discord_format != null ? discord_format : "<<username>> <message>";
     }
 
     List<String> servers;
