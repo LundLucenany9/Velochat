@@ -42,23 +42,33 @@ public final class ReplyRegistry {
         return ENTRIES.values().stream().filter(e -> Objects.equals(e.discordMessageId, id)).findFirst();
     }
 
-    public static synchronized void updateFullMessage(String id, Component fullMessage, Origin origin, String dcMessageId) {
+    /** Updates the rendered Component after dispatch. Chat critical path. */
+    public static synchronized void updateRendered(String id, Component fullMessage) {
         ReplyContext existing = ENTRIES.get(id);
-        if (existing == null) {
-            return;
-        }
-        ReplyContext updated = new ReplyContext(
-                existing.id(),
-                existing.senderId(),
-                existing.senderName(),
-                existing.snippet(),
-                fullMessage,
-                existing.recipients(),
-                origin,
-                dcMessageId,
-                existing.group
-        );
-        ENTRIES.put(id, updated);
+        if (existing == null) return;
+        ENTRIES.put(id, new ReplyContext(
+                existing.id(), existing.senderId(), existing.senderName(),
+                existing.snippet(), fullMessage, existing.recipients(),
+                existing.origin(), existing.discordMessageId(), existing.group()
+        ));
+    }
+
+    /** Updates the Discord message ID after Discord send. Fire-and-forget observer. */
+    public static synchronized void updateDiscordId(String id, String dcMessageId) {
+        ReplyContext existing = ENTRIES.get(id);
+        if (existing == null) return;
+        ENTRIES.put(id, new ReplyContext(
+                existing.id(), existing.senderId(), existing.senderName(),
+                existing.snippet(), existing.fullMessage(), existing.recipients(),
+                existing.origin(), dcMessageId, existing.group()
+        ));
+    }
+
+    /** @deprecated use updateRendered + updateDiscordId separately */
+    @Deprecated
+    public static synchronized void updateFullMessage(String id, Component fullMessage, Origin origin, String dcMessageId) {
+        updateRendered(id, fullMessage);
+        updateDiscordId(id, dcMessageId);
     }
 
     public static synchronized ReplyContext getLastBySender(UUID sender) {

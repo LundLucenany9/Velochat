@@ -154,29 +154,10 @@ public final class ReplyService {
                         : TagResolver.resolver(new GenericChatTagResolver(
                                 source.senderName(), source.group(), message, newReplyId, message));
 
-        CompletableFuture<String> discordFuture = CompletableFuture.completedFuture(null);
-        if (source.origin() == ReplyRegistry.Origin.MINECRAFT) {
-            assert context != null;
-            if(context.discordMessageId() != null)
-                discordFuture = Bot.getInstance().sendReply(source.group(), context.discordMessageId(),message, source.senderName)
-                        .exceptionally(ex -> {
-                            Velochat.getLogger().warn("Failed to mirror reply to Discord: {}", ex.getMessage());
-                            return null;
-                        });
-        } else {
-            discordFuture = CompletableFuture.completedFuture(source.discordMessageId);
-        }
-
-        CompletableFuture<String> finalDiscordFuture = discordFuture;
-        CompletableFuture<Component> normalBody =
-                (resolvedPapiPlayer != null
-                        ? Velochat.parser.parseWithResolver(normalFormat, resolvedPapiPlayer, bodyResolver)
-                        : Velochat.parser.parseWithResolver(normalFormat, bodyResolver))
-                        .thenApply(c -> {
-                            finalDiscordFuture.thenAccept(id ->
-                                    ReplyRegistry.updateFullMessage(newReplyId, c, source.origin(), id));
-                            return c;
-                        });
+        // Chat critical path: render → dispatch, no Discord dependency
+        CompletableFuture<Component> normalBody = resolvedPapiPlayer != null
+                ? Velochat.parser.parseWithResolver(normalFormat, resolvedPapiPlayer, bodyResolver)
+                : Velochat.parser.parseWithResolver(normalFormat, bodyResolver);
 
         CompletableFuture<Component> blockedBody = blockedFormat.equals(normalFormat) ? normalBody
                 : (resolvedPapiPlayer != null
@@ -199,12 +180,28 @@ public final class ReplyService {
                     }
                     if (target != null)
                         target.playSound(Sound.sound(Key.key("minecraft", "bell"), Sound.Source.MASTER, 1, 1));
+                    // update rendered component after dispatch
+                    ReplyRegistry.updateRendered(newReplyId, normalBody.join());
                 }).exceptionally(ex -> {
                     if (source.player() != null)
                         source.player().sendMessage(Component.text("Formatting error").color(NamedTextColor.RED));
                     Velochat.getLogger().warn("Formatting error in sendReply: {}", ex.getLocalizedMessage());
                     return null;
                 });
+
+        // Discord observer: fire-and-forget, fully decoupled from reply pipeline
+        if (source.origin() == ReplyRegistry.Origin.MINECRAFT && context != null
+                && context.discordMessageId() != null) {
+            Bot.getInstance()
+                    .sendReply(source.group(), context.discordMessageId(), message, source.senderName())
+                    .thenAccept(id -> ReplyRegistry.updateDiscordId(newReplyId, id))
+                    .exceptionally(ex -> {
+                        Velochat.getLogger().warn("Failed to mirror reply to Discord: {}", ex.getMessage());
+                        return null;
+                    });
+        } else if (source.origin() == ReplyRegistry.Origin.DISCORD) {
+            ReplyRegistry.updateDiscordId(newReplyId, source.discordMessageId());
+        }
     }
 
     private static List<Player> computeRecipients(ReplySource source, Player target, ReplyRegistry.ReplyContext context) {

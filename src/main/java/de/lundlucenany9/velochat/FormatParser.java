@@ -213,32 +213,32 @@ public class FormatParser {
                             return null;
                         })
                         : CompletableFuture.completedFuture(null);
-        CompletableFuture<String> discordMessageIdFuture = Bot.getInstance()
-                .sendMessage(group, msg, player.getUsername())
-                .exceptionally(ex -> {
-                    logger.warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
-                    return "";
-                });
+        // Chat critical path: render → dispatch, no Discord dependency
         normalFuture.thenCombine(blockedFuture, (component, blockedComponent) -> {
-            discordMessageIdFuture
-                    .thenAccept(discordMessageId ->
-                            ReplyRegistry.updateFullMessage(replyId, component, ReplyRegistry.Origin.MINECRAFT, discordMessageId))
-                    .exceptionally(ex -> {
-                        logger.warn("Failed to update reply context with Discord message id: {}", ex.getMessage());
-                        return null;
-                    });
             proxy.getScheduler().buildTask(plugin, () -> {
                 if (config.isGlobalChat()) {
                     sendToRecipients(player, recipients, component, blockedComponent);
                 } else if (config.isBroadcastMessage()) {
                     sendToRecipients(player, recipients, component, blockedComponent);
                 }
+                // update rendered component in registry after dispatch
+                ReplyRegistry.updateRendered(replyId, component);
             }).schedule();
             return null;
         }).exceptionally(ex -> {
             logger.warn("Failed to deliver chat message: {}", ex.getMessage());
             return null;
         });
+
+        // Discord observer: fire-and-forget, fully decoupled from chat pipeline
+        Bot.getInstance()
+                .sendMessage(group, msg, player.getUsername())
+                .thenAccept(discordMessageId ->
+                        ReplyRegistry.updateDiscordId(replyId, discordMessageId))
+                .exceptionally(ex -> {
+                    logger.warn("Failed to mirror chat message to Discord: {}", ex.getMessage());
+                    return null;
+                });
     }
 
     public void sendDiscordChat(Message message, Member author) {
@@ -259,7 +259,8 @@ public class FormatParser {
                     return Component.text(message.getContentStripped());
                 });
         normalFuture.thenAccept((component) -> {
-            ReplyRegistry.updateFullMessage(replyId, component, ReplyRegistry.Origin.DISCORD, message.getId());
+            ReplyRegistry.updateRendered(replyId, component);
+            ReplyRegistry.updateDiscordId(replyId, message.getId());
             proxy.getScheduler().buildTask(plugin, () -> {
                 if (config.isGlobalChat()) {
                     sendToRecipients(recipients, component);
