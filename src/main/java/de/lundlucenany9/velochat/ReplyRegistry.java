@@ -29,7 +29,7 @@ public final class ReplyRegistry {
         String id = Integer.toString(COUNTER.incrementAndGet(), 36);
         String snippet = buildSnippet(message);
         Set<UUID> recipientSet = recipients == null ? Collections.emptySet() : new HashSet<>(recipients);
-        ReplyContext context = new ReplyContext(id, senderId, sender, snippet, null, recipientSet, origin, null, group);
+        ReplyContext context = new ReplyContext(id, senderId, sender, snippet, null, recipientSet, origin, Optional.empty(), group);
         ENTRIES.put(id, context);
         LAST_BY_SENDER.put(senderId, id);
         return id;
@@ -39,7 +39,7 @@ public final class ReplyRegistry {
         return ENTRIES.get(id);
     }
     public static synchronized Optional<ReplyContext> getByMessageId(String id) {
-        return ENTRIES.values().stream().filter(e -> Objects.equals(e.discordMessageId, id)).findFirst();
+        return ENTRIES.values().stream().filter(e -> e.discordMessageId().filter(id::equals).isPresent()).findFirst();
     }
 
     /** Updates the rendered Component after dispatch. Chat critical path. */
@@ -60,7 +60,7 @@ public final class ReplyRegistry {
         ENTRIES.put(id, new ReplyContext(
                 existing.id(), existing.senderId(), existing.senderName(),
                 existing.snippet(), existing.fullMessage(), existing.recipients(),
-                existing.origin(), dcMessageId, existing.group()
+                existing.origin(), Optional.ofNullable(dcMessageId), existing.group()
         ));
     }
 
@@ -110,7 +110,7 @@ public final class ReplyRegistry {
                                Component fullMessage,
                                Set<UUID> recipients,
                                Origin origin,
-                               String discordMessageId,
+                               Optional<String> discordMessageId,
                                String group) {
     }
 

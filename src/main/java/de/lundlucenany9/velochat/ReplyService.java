@@ -191,16 +191,17 @@ public final class ReplyService {
 
         // Discord observer: fire-and-forget, fully decoupled from reply pipeline
         if (source.origin() == ReplyRegistry.Origin.MINECRAFT && context != null
-                && context.discordMessageId() != null) {
+                && context.discordMessageId().isPresent()) {
             Bot.getInstance()
-                    .sendReply(source.group(), context.discordMessageId(), message, source.senderName())
+                    .sendReply(source.group(), context.discordMessageId().get(), message, source.senderName())
                     .thenAccept(id -> ReplyRegistry.updateDiscordId(newReplyId, id))
                     .exceptionally(ex -> {
                         Velochat.getLogger().warn("Failed to mirror reply to Discord: {}", ex.getMessage());
                         return null;
                     });
         } else if (source.origin() == ReplyRegistry.Origin.DISCORD) {
-            ReplyRegistry.updateDiscordId(newReplyId, source.discordMessageId());
+            if (source.discordMessageId() != null)
+                ReplyRegistry.updateDiscordId(newReplyId, source.discordMessageId());
         }
     }
 
