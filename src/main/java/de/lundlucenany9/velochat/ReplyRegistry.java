@@ -64,12 +64,7 @@ public final class ReplyRegistry {
         ));
     }
 
-    /** @deprecated use updateRendered + updateDiscordId separately */
-    @Deprecated
-    public static synchronized void updateFullMessage(String id, Component fullMessage, Origin origin, String dcMessageId) {
-        updateRendered(id, fullMessage);
-        updateDiscordId(id, dcMessageId);
-    }
+
 
     public static synchronized ReplyContext getLastBySender(UUID sender) {
         String id = sender == null ? null : LAST_BY_SENDER.get(sender.toString());
